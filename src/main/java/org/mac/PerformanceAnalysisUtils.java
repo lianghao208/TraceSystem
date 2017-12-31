@@ -2,7 +2,7 @@ package org.mac;
 
 
 /**
- * Created by Administrator on 2017/12/30.
+ * Created by Liang Hao on 2017/12/30.
  * 网络性能指标计算
  */
 public class PerformanceAnalysisUtils {

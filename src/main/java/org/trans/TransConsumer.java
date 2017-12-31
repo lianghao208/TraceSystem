@@ -10,7 +10,7 @@ import org.utils.ConfigUtils;
 import org.utils.ConnectionUtils;
 
 /**
- * Created by Administrator on 2017/12/29.
+ * Created by Liang Hao on 2017/12/29.
  */
 public class TransConsumer {
 

@@ -11,7 +11,7 @@ import java.util.Scanner;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Created by Administrator on 2017/10/20.
+ * Created by Liang Hao on 2017/10/20.
  */
 public class Producer {
     public final static String EXCHANGE_NAME="rabbitMQ.topic";

@@ -1,7 +1,7 @@
 package org.utils;
 
 /**
- * Created by Administrator on 2017/10/21.
+ * Created by Liang Hao on 2017/10/21.
  */
 public class ConfigUtils {
     public static final String HOST_NAME = "192.168.175.129";
