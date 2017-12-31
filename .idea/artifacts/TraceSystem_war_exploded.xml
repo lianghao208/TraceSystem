@@ -1,0 +1,20 @@
+<component name="ArtifactManager">
+  <artifact type="exploded-war" name="TraceSystem:war exploded">
+    <output-path>$PROJECT_DIR$/target/trace</output-path>
+    <root id="root">
+      <element id="directory" name="WEB-INF">
+        <element id="directory" name="classes">
+          <element id="module-output" name="TraceSystem" />
+        </element>
+        <element id="directory" name="lib">
+          <element id="library" level="project" name="Maven: com.rabbitmq:amqp-client:3.6.5" />
+          <element id="library" level="project" name="Maven: com.alibaba:fastjson:1.2.44" />
+        </element>
+      </element>
+      <element id="directory" name="META-INF">
+        <element id="file-copy" path="$PROJECT_DIR$/target/trace/META-INF/MANIFEST.MF" />
+      </element>
+      <element id="javaee-facet-resources" facet="TraceSystem/web/Web" />
+    </root>
+  </artifact>
+</component>

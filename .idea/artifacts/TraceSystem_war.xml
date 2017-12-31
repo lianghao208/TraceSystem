@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="war" name="TraceSystem:war">
+    <output-path>$PROJECT_DIR$/target</output-path>
+    <root id="archive" name="trace.war">
+      <element id="artifact" artifact-name="TraceSystem:war exploded" />
+    </root>
+  </artifact>
+</component>
