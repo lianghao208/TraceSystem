@@ -9,6 +9,7 @@ import com.rabbitmq.client.QueueingConsumer;
 import org.utils.BindingKeySet;
 import org.utils.ConfigUtils;
 import org.utils.ConnectionUtils;
+import org.utils.HttpRequestUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,8 +21,11 @@ public class MACConsumer {
 
     private static final String EXCHANGE_NAME = "microstack";
 
-    //数据包总数量
-    private static int dataNum;
+    //接收数据包总数量
+    private static int dataRcvNum;
+
+    //发送数据包总数量
+    private static int dataSendNum;
 
     //每个数据包的大小
     private static int dataSize;
@@ -47,12 +51,18 @@ public class MACConsumer {
     //用于记录Phy层向Mac层传输信息包时所对应的时间<mac字段数据包号+源结点id,接收时间>
     private static Map<String,Long> macSendTimeMap = new HashMap<String, Long>();
 
+    //向python服务器发送post请求参数
+    private static Map<String,Object> requestParamMap = new HashMap<String,Object>();
+
     public static void main(String[] argv) throws Exception
     {
         // 创建连接和频道
         //ConnectionFactory factory = new ConnectionFactory();
         //factory.setHost(ConfigUtils.HOST_NAME);
         //Connection connection = factory.newConnection();
+        requestParamMap.put("action", "show");
+        requestParamMap.put("session", "123");
+        requestParamMap.put("layer","mac");
         Connection connection = ConnectionUtils
                 .init(  ConfigUtils.HOST_NAME,
                         ConfigUtils.USER_NAME,
@@ -74,6 +84,8 @@ public class MACConsumer {
 
         QueueingConsumer consumer = new QueueingConsumer(channel);
         channel.basicConsume(queueName, true, consumer);
+
+
 
         while (true)
         {
@@ -103,6 +115,7 @@ public class MACConsumer {
             if(mac.getString("type").equals("data")){
                 //System.out.println("<" + mac.getIntValue("serialnum") + "," + jsonObject.getLongValue("sendtime"));
                 macSendTimeMap.put(String.valueOf(mac.getIntValue("serialnum"))+String.valueOf(mac.getIntValue("sid")),jsonObject.getLongValue("sendtime"));
+                dataSendNum++;
                 //sendTime = jsonObject.getLongValue("sendtime");
             }
         }
@@ -121,10 +134,18 @@ public class MACConsumer {
                 dataSize = macDataSize(jsonObject);
 
                 //3.计算吞吐量
-                System.out.println("数据包大小（/bit）：" + dataSize + " 平均吞吐量为：" + dataSize/(timeDelay/1000.0));
+                System.out.println("数据包大小（/bit）：" + dataSize + " 吞吐量为（bit/s）：" + dataSize/(timeDelay/1000.0));
+                requestParamMap.put("throughput",dataSize/(timeDelay/1000.0));
 
                 //4.计算平均吞吐量
                 timeDelaySum = macDelaySum(jsonObject, dataSize);
+
+                //5.计算丢包率
+                System.out.println("丢包率：" + (1-(double)dataRcvNum/(double)dataSendNum));
+                requestParamMap.put("lossRate",(1-(double)dataRcvNum/(double)dataSendNum));
+
+                String sr= HttpRequestUtils.sendPost("http://localhost:8000/cart", requestParamMap,"utf-8");
+                System.out.println(sr);
             }
         }
     }
@@ -135,8 +156,9 @@ public class MACConsumer {
      * @param delay
      */
     public static void macThroughput(int dataSizeSum, double delay){
-        System.out.println("数据包总大小（/bit）：" + dataSizeSum + " 吞吐量为：" + dataSizeSum/(delay/1000.0));
-
+        System.out.println("数据包总大小（/bit）：" + dataSizeSum + " 总吞吐量为（bit/s）：" + dataSizeSum/(delay/1000.0));
+        requestParamMap.put("dataSizeSum",dataSizeSum);
+        requestParamMap.put("throughputSum",dataSizeSum/(delay/1000.0));
     }
 
 
@@ -150,6 +172,7 @@ public class MACConsumer {
         Long receiveTime = jsonObject.getLongValue("recvtime");
         double delay = receiveTime - macSendTimeMap.get(String.valueOf(mac.getIntValue("serialnum")) + String.valueOf(mac.getIntValue("sid")));
         System.out.println("端到端时延为（/s）：" + delay/1000.0);
+        requestParamMap.put("delay",delay);
         return delay;
     }
 
@@ -160,15 +183,17 @@ public class MACConsumer {
      * @return
      */
     public static double macDelaySum(JSONObject jsonObject, int dataSize){
-        dataNum++;
-        if (dataNum == 1){
+        dataRcvNum++;
+        if (dataRcvNum == 1){
             startTime = jsonObject.getLongValue("recvtime");
         }
         dataSizeSum += dataSize;
         Long receiveTime = jsonObject.getLongValue("recvtime");
         double delay = receiveTime - startTime;
         System.out.println("端到端总时延为（/s）：" + delay/1000.0);
-        System.out.println("端到端平均时延为（/s）：" + delay/1000.0/dataNum);
+        System.out.println("端到端平均时延为（/s）：" + delay/1000.0/dataRcvNum);
+        requestParamMap.put("delaySum",delay/1000.0);
+        requestParamMap.put("delayAvg",1.2);
         //System.out.println("数据包总大小（/bit）：" + dataSizeSum + " 吞吐量为：" + dataSizeSum/(delay/1000.0));
         macThroughput(dataSizeSum,delay);
         return delay;
@@ -183,6 +208,7 @@ public class MACConsumer {
         JSONObject packet = jsonObject.getJSONObject("packet");
         int size = (packet.getIntValue("tail") - packet.getIntValue("head"))*8;
         System.out.println("数据包大小为：" + size);
+        requestParamMap.put("dataSize",size);
         return size;
     }
 
