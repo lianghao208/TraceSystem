@@ -1,7 +1,6 @@
 package org.helloworld;
 
 import org.utils.HttpRequestUtils;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,7 +22,9 @@ public class TestWebSocket {
         map.put("delaySum",2.4);//
         map.put("delayAvg",1.2);//
         map.put("lossRate",0.9);//
-        String sr= HttpRequestUtils.sendPost("http://localhost:8000/cart", map,"utf-8");
+        map.put("sendDataNum",9);//
+        map.put("recvDataNum",9);//
+        String sr= HttpRequestUtils.sendPost("http://192.168.199.229:8000/cart", map,"utf-8");
         System.out.println(sr);
     }
 }

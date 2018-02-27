@@ -1,0 +1,36 @@
+1.EXCHANGE_NAME:"microstack"
+
+2.
+    app----SteamFish2
+
+    tran----UDP
+
+    net----DRTPlus
+
+    mac----newALOHA
+            BindingKey1:DrtPlus.MsgRecvDataNtf
+            BindingKey2:SimulateChannel.MsgSendDataReq
+
+    phy----simulateChannel
+
+3.WebSocket API
+    "action": "show"
+    "session":"123"
+    "layer":"mac"
+    "dataSize":560
+    "throughput":2500
+    "dataSizeSum":1120
+    "throughputSum":6000
+    "delay":1.2
+    "delaySum":2.4
+    "delayAvg":1.2
+    "lossRate":0.9
+    "sendDataNum":10
+    "recvDataNum":10
+
+
+
+
+
+
+

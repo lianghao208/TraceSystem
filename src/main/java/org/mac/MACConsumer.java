@@ -13,6 +13,8 @@ import org.utils.HttpRequestUtils;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Created by Liang Hao on 2017/12/29.
@@ -32,7 +34,6 @@ public class MACConsumer {
 
     //总数据包大小
     private static int dataSizeSum;
-
 
     private static double time;
 
@@ -54,12 +55,12 @@ public class MACConsumer {
     //向python服务器发送post请求参数
     private static Map<String,Object> requestParamMap = new HashMap<String,Object>();
 
+    //记录每个包发送的次数
+    private static Map<String,Integer> dataSendNumMap = new HashMap<String, Integer>();
+
     public static void main(String[] argv) throws Exception
     {
         // 创建连接和频道
-        //ConnectionFactory factory = new ConnectionFactory();
-        //factory.setHost(ConfigUtils.HOST_NAME);
-        //Connection connection = factory.newConnection();
         requestParamMap.put("action", "show");
         requestParamMap.put("session", "123");
         requestParamMap.put("layer","mac");
@@ -77,7 +78,7 @@ public class MACConsumer {
 
         //接收所有ALOHA发送时的相关消息
         channel.queueBind(queueName, EXCHANGE_NAME, BindingKeySet.DRT_PLUS_RECV_DATA_NTF);
-        channel.queueBind(queueName, EXCHANGE_NAME, BindingKeySet.ALOHA_MSG_RECV_DATA_NTF);
+        //channel.queueBind(queueName, EXCHANGE_NAME, BindingKeySet.ALOHA_MSG_RECV_DATA_NTF);
         channel.queueBind(queueName, EXCHANGE_NAME, BindingKeySet.SIMULATE_CHANNEL);
 
         System.out.println(" [*] Waiting for messages about ALOHA. To exit press CTRL+C");
@@ -95,6 +96,7 @@ public class MACConsumer {
 
             dataProcess(routingKey,message);
             //macAvgDelay(routingKey,message,10);
+            //打印出监听的路由键
             System.out.println(" Received routingKey = " + routingKey
                     + ",msg = " + message + ".");
         }
@@ -114,8 +116,17 @@ public class MACConsumer {
             JSONObject mac = jsonObject.getJSONObject("mac");
             if(mac.getString("type").equals("data")){
                 //System.out.println("<" + mac.getIntValue("serialnum") + "," + jsonObject.getLongValue("sendtime"));
-                macSendTimeMap.put(String.valueOf(mac.getIntValue("serialnum"))+String.valueOf(mac.getIntValue("sid")),jsonObject.getLongValue("sendtime"));
-                dataSendNum++;
+                String key = String.valueOf(mac.getIntValue("serialnum")) + String.valueOf(mac.getIntValue("sid"));
+                macSendTimeMap.put(key,jsonObject.getLongValue("sendtime"));
+                dataSendNum = macSendTimeMap.size();
+                //如果之前发过相同的包
+                if (dataSendNumMap.get(key) != null){
+                    int num = dataSendNumMap.get(key);
+                    dataSendNumMap.put(key,num++);
+                }else {
+                    dataSendNumMap.put(key,1);
+                }
+                return;
                 //sendTime = jsonObject.getLongValue("sendtime");
             }
         }
@@ -127,6 +138,9 @@ public class MACConsumer {
             //System.out.println(mac.getIntValue("serialnum"));
             if(mac.getString("type").equals("data") &&
                     macSendTimeMap.get(String.valueOf(mac.getIntValue("serialnum"))+String.valueOf(mac.getIntValue("sid"))) != null){
+
+                String key = String.valueOf(mac.getIntValue("serialnum"))+String.valueOf(mac.getIntValue("sid"));
+
                 //1.传输时延
                 timeDelay = macDelay(jsonObject, mac);
 
@@ -141,9 +155,16 @@ public class MACConsumer {
                 timeDelaySum = macDelaySum(jsonObject, dataSize);
 
                 //5.计算丢包率
-                System.out.println("丢包率：" + (1-(double)dataRcvNum/(double)dataSendNum));
-                requestParamMap.put("lossRate",(1-(double)dataRcvNum/(double)dataSendNum));
+                //将接收端数据包出栈，判断是否是最旧的包，如果不是，则存在丢包
+                System.out.println("接收包数：" + dataRcvNum + " 发送包数：" + dataSendNum);
+                System.out.println("丢包率：" + (1-dataRcvNum/(double)dataSendNum));
+                requestParamMap.put("lossRate",dataRcvNum/(double)dataSendNum);
+                requestParamMap.put("sendDataNum",dataSendNum);
+                requestParamMap.put("recvDataNum",dataRcvNum);
 
+                //6.计算每个包的发送数
+                System.out.println("数据包序号：" + key + ",发送数为：" + dataSendNumMap.get(key));
+                //连接服务器更新数据
                 String sr= HttpRequestUtils.sendPost("http://localhost:8000/cart", requestParamMap,"utf-8");
                 System.out.println(sr);
             }
